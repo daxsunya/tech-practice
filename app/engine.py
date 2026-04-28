@@ -13,7 +13,6 @@ class ImageRetrievalEngine:
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
         self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
-        # Данные и предобученные эмбеддинги из источников [4, 5]
         self.images = images
         self.labels = labels
         self.clip_image_embeddings = clip_embeddings
@@ -33,7 +32,6 @@ class ImageRetrievalEngine:
         with torch.no_grad():
             return self.model.get_text_features(**inputs).cpu().numpy()
 
-    # Методы ранжирования из источников [1, 5]
     def clip_ranking(self, query_text, k=9):
         user_emb = self.get_text_embedding(query_text)
         sims = cosine_similarity(user_emb, self.clip_image_embeddings).ravel()
