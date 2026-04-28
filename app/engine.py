@@ -9,7 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 class ImageRetrievalEngine:
     def __init__(self, images, labels, clip_embeddings):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "mps" if torch.mps.is_available() else "cpu"
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
         self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
@@ -17,7 +17,6 @@ class ImageRetrievalEngine:
         self.labels = labels
         self.clip_image_embeddings = clip_embeddings
 
-        # Подготовка SVD и TF-IDF [5]
         self.svd = TruncatedSVD(n_components=64, random_state=42)
         self.svd_embeddings = self.svd.fit_transform(self.clip_image_embeddings)
 
@@ -51,7 +50,9 @@ class ImageRetrievalEngine:
     def random_recommendation(self, k=9):
         return np.random.choice(len(self.labels), k, replace=False)
 
-    # Метрики качества из источника [2]
+    def popularity_recommendation(self, k=9):
+        return [np.where(self.labels == c) for c, _ in Counter(self.labels).most_common(k)]
+
     def precision_at_k(self, indices):
         classes = self.labels[indices]
         dominant_class, count = Counter(classes).most_common(1)
@@ -68,3 +69,14 @@ class ImageRetrievalEngine:
         imgs_emb = self.clip_image_embeddings[indices]
         sims = cosine_similarity(query_emb, imgs_emb).ravel()
         return float(np.mean(sims))
+
+    def ndcg_at_k(self, indices, query_text):
+        query_emb = self.get_text_embedding(query_text)
+        actual_sims = cosine_similarity(query_emb, self.clip_image_embeddings[indices]).ravel()
+        ideal_sims = np.sort(actual_sims)[::-1]
+
+        def dcg(s): return np.sum([val / np.log2(i + 2) for i, val in enumerate(s)])
+
+        actual_dcg = dcg(actual_sims)
+        idcg = dcg(ideal_sims)
+        return actual_dcg / idcg if idcg > 0 else 0
