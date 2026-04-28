@@ -18,7 +18,7 @@ jobs:
 #        run: pip install -r requirements.txt
 
   benchmarking:
-    needs: build
+#    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
