@@ -1,7 +1,7 @@
 name: Benchmark and Update Badges
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   benchmark:
