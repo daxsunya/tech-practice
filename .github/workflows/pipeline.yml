@@ -1,0 +1,46 @@
+name: Image Retrieval CI/CD
+
+on: [push, pull_request]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Unit Tests
+        run: pytest tests/
+
+  benchmarking:
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run Benchmarks (CPU, RAM, Latency)
+        run: |
+          pip install -r requirements.txt
+          python scripts/benchmark.py > benchmark_report.txt
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-report
+          path: benchmark_report.txt
+
+  deploy_image:
+    needs: benchmarking
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Docker Image
+        run: docker build -t clip-retrieval-system .
