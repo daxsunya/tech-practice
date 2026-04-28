@@ -3,19 +3,19 @@ name: Image Retrieval CI/CD
 on: [ push, pull_request ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+#  build:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout Code
+#        uses: actions/checkout@v3
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v4
+#        with:
+#          python-version: '3.9'
+#
+#      - name: Install dependencies
+#        run: pip install -r requirements.txt
 
   benchmarking:
     needs: build
@@ -27,6 +27,7 @@ jobs:
       - name: Run Benchmarks (CPU, RAM, Latency)
         run: |
           pip install -r requirements.txt
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
           python scripts/benchmark.py > benchmark_report.txt
 
       - name: Upload Benchmark Results
