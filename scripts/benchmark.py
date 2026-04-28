@@ -67,6 +67,10 @@ if __name__ == "__main__":
     images = data[b"data"].reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
     labels = np.array(data[b"fine_labels"])
 
+    N = 5000
+    images = images[:N]
+    labels = labels[:N]
+
     engine = ImageRetrievalEngine(
         images=images,
         labels=labels,
