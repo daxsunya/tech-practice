@@ -51,11 +51,27 @@ class ImageRetrievalEngine:
         return np.random.choice(len(self.labels), k, replace=False)
 
     def popularity_recommendation(self, k=9):
-        return [np.where(self.labels == c) for c, _ in Counter(self.labels).most_common(k)]
+        popular_classes = [
+            c for c, _ in Counter(self.labels).most_common()
+        ]
+
+        indices = []
+
+        for cls in popular_classes:
+            cls_indices = np.where(self.labels == cls)[0]
+            indices.extend(cls_indices.tolist())
+
+            if len(indices) >= k:
+                break
+
+        return np.array(indices[:k])
 
     def precision_at_k(self, indices):
+        if len(indices) == 0:
+            return 0
+
         classes = self.labels[indices]
-        dominant_class, count = Counter(classes).most_common(1)
+        dominant_class, count = Counter(classes).most_common(1)[0]
         return count / len(indices)
 
     def embedding_diversity(self, indices):
