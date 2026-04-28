@@ -1,20 +1,72 @@
 import torch
 import numpy as np
+from collections import Counter
 from transformers import CLIPProcessor, CLIPModel
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 class ImageRetrievalEngine:
-    def __init__(self):
+    def __init__(self, images, labels, clip_embeddings):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
         self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+        # Данные и предобученные эмбеддинги из источников [4, 5]
+        self.images = images
+        self.labels = labels
+        self.clip_image_embeddings = clip_embeddings
+
+        # Подготовка SVD и TF-IDF [5]
+        self.svd = TruncatedSVD(n_components=64, random_state=42)
+        self.svd_embeddings = self.svd.fit_transform(self.clip_image_embeddings)
+
+        class_descriptions = {0: "aquatic animal fish", 1: "small mammal rodent", 2: "vehicle transport",
+                              3: "domestic animal", 4: "wild animal"}
+        texts = [class_descriptions.get(c, "object image") for c in labels]
+        self.tfidf = TfidfVectorizer()
+        self.tfidf_matrix = self.tfidf.fit_transform(texts)
 
     def get_text_embedding(self, text):
         inputs = self.processor(text=[text], return_tensors="pt").to(self.device)
         with torch.no_grad():
             return self.model.get_text_features(**inputs).cpu().numpy()
 
-    def clip_ranking(self, query_text, image_embeddings, k=9):
+    # Методы ранжирования из источников [1, 5]
+    def clip_ranking(self, query_text, k=9):
         user_emb = self.get_text_embedding(query_text)
-        sims = cosine_similarity(user_emb, image_embeddings).ravel()
+        sims = cosine_similarity(user_emb, self.clip_image_embeddings).ravel()
         return np.argsort(sims)[-k:]
+
+    def svd_ranking(self, query_text, k=9):
+        user_emb = self.get_text_embedding(query_text)
+        user_latent = self.svd.transform(user_emb)
+        sims = cosine_similarity(user_latent, self.svd_embeddings).ravel()
+        return np.argsort(sims)[-k:]
+
+    def content_based_ranking(self, query_text, k=9):
+        query_vec = self.tfidf.transform([query_text])
+        sims = (self.tfidf_matrix @ query_vec.T).toarray().ravel()
+        return np.argsort(sims)[-k:]
+
+    def random_recommendation(self, k=9):
+        return np.random.choice(len(self.labels), k, replace=False)
+
+    # Метрики качества из источника [2]
+    def precision_at_k(self, indices):
+        classes = self.labels[indices]
+        dominant_class, count = Counter(classes).most_common(1)
+        return count / len(indices)
+
+    def embedding_diversity(self, indices):
+        embs = self.clip_image_embeddings[indices]
+        sims = cosine_similarity(embs)
+        upper = sims[np.triu_indices_from(sims, k=1)]
+        return 1 - np.mean(upper)
+
+    def semantic_relevance(self, indices, query_text):
+        query_emb = self.get_text_embedding(query_text)
+        imgs_emb = self.clip_image_embeddings[indices]
+        sims = cosine_similarity(query_emb, imgs_emb).ravel()
+        return float(np.mean(sims))
