@@ -1,6 +1,9 @@
 import json
 import os
+import pickle
 import time
+
+import kagglehub
 import pandas as pd
 import numpy as np
 
@@ -51,17 +54,22 @@ def save_badge_json(model_name, metric_name, value):
         json.dump(data, f)
 
 
+
 if __name__ == "__main__":
     query = "aquatic animal fish"
 
-    images = [None] * 100
-    labels = np.random.randint(0, 5, size=100)
-    clip_embeddings = np.random.rand(100, 512)
+    dataset_path = kagglehub.dataset_download("fedesoriano/cifar100")
+    train_file = os.path.join(dataset_path, "train")
+
+    with open(train_file, "rb") as f:
+        data = pickle.load(f, encoding="bytes")
+
+    images = data[b"data"].reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
+    labels = np.array(data[b"fine_labels"])
 
     engine = ImageRetrievalEngine(
         images=images,
         labels=labels,
-        clip_embeddings=clip_embeddings
     )
 
     models = {

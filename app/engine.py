@@ -1,3 +1,7 @@
+import os
+import pickle
+
+
 import torch
 import numpy as np
 from collections import Counter
@@ -5,17 +9,23 @@ from transformers import CLIPProcessor, CLIPModel
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
+from tqdm import tqdm
+from PIL import Image
+
+device = "mps" if torch.mps.is_available() else "cpu"
 
 
 class ImageRetrievalEngine:
-    def __init__(self, images, labels, clip_embeddings):
+    def __init__(self, images, labels):
         self.device = "mps" if torch.mps.is_available() else "cpu"
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
         self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
         self.images = images
         self.labels = labels
-        self.clip_image_embeddings = clip_embeddings
+
+        print("Вычисление эмбеддингов изображений (offline этап)")
+        self.clip_image_embeddings = self.compute_clip_embeddings(images)
 
         self.svd = TruncatedSVD(n_components=64, random_state=42)
         self.svd_embeddings = self.svd.fit_transform(self.clip_image_embeddings)
@@ -25,6 +35,25 @@ class ImageRetrievalEngine:
         texts = [class_descriptions.get(c, "object image") for c in labels]
         self.tfidf = TfidfVectorizer()
         self.tfidf_matrix = self.tfidf.fit_transform(texts)
+
+
+    def compute_clip_embeddings(self, images, batch_size=64):
+        embeddings = []
+
+        for i in tqdm(range(0, len(images), batch_size), desc="CLIP embeddings"):
+            batch = images[i:i + batch_size]
+
+            inputs = self.processor(
+                images=[Image.fromarray(img) for img in batch],
+                return_tensors="pt"
+            ).to(device)
+
+            with torch.no_grad():
+                emb = self.model.get_image_features(**inputs)
+
+            embeddings.append(emb.cpu().numpy())
+
+        return np.vstack(embeddings)
 
     def get_text_embedding(self, text):
         inputs = self.processor(text=[text], return_tensors="pt").to(self.device)
