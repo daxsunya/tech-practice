@@ -1,11 +1,17 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y libgl1-mesa-glx && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libgl1 && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /project
+WORKDIR /tech-practice
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "scripts/benchmark.py"]
+ENV PYTHONPATH="/tech-practice"
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 5000
+
+CMD ["python", "app/web.py"]
