@@ -18,11 +18,29 @@ device = "mps" if torch.mps.is_available() else "cpu"
 class ImageRetrievalEngine:
     def __init__(self, images, labels):
         self.device = "mps" if torch.mps.is_available() else "cpu"
+
         model_path = "/models/clip-vit-base-patch32"
 
-        self.model = CLIPModel.from_pretrained(model_path).to(self.device)
-        self.processor = CLIPProcessor.from_pretrained(model_path)
+        if os.path.exists(model_path):
+            print(f"Загрузка CLIP из локального пути: {model_path}")
+            self.model = CLIPModel.from_pretrained(
+                model_path,
+                local_files_only=True
+            ).to(self.device)
 
+            self.processor = CLIPProcessor.from_pretrained(
+                model_path,
+                local_files_only=True
+            )
+        else:
+            print("Локальная модель не найдена, загрузка из Hugging Face...")
+            self.model = CLIPModel.from_pretrained(
+                "openai/clip-vit-base-patch32"
+            ).to(self.device)
+
+            self.processor = CLIPProcessor.from_pretrained(
+                "openai/clip-vit-base-patch32"
+            )
         self.images = images
         self.labels = labels
 
