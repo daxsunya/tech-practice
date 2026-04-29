@@ -18,8 +18,10 @@ device = "mps" if torch.mps.is_available() else "cpu"
 class ImageRetrievalEngine:
     def __init__(self, images, labels):
         self.device = "mps" if torch.mps.is_available() else "cpu"
-        self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
-        self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+        model_path = "/models/clip-vit-base-patch32"
+
+        self.model = CLIPModel.from_pretrained(model_path).to(self.device)
+        self.processor = CLIPProcessor.from_pretrained(model_path)
 
         self.images = images
         self.labels = labels
