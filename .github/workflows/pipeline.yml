@@ -4,6 +4,25 @@ on:
     branches: [ main ]
 
 jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Login to Yandex Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: cr.yandex
+          username: oauth
+          password: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+
+      - name: Build and Push Image
+        run: |
+          docker build -t cr.yandex/crpd6c2nbgpc62degbju/web-app:latest .
+
+          docker push cr.yandex/crpd6c2nbgpc62degbju/web-app:latest
   benchmark:
     runs-on: ubuntu-latest
     steps:
