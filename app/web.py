@@ -150,4 +150,4 @@ def search():
 
 if __name__ == "__main__":
     get_engine()
-    app.run(debug=True,use_reloader=False)
+    app.run(host="0.0.0.0", port=5000)
